@@ -1,0 +1,4 @@
+* Some functionality to manage jupyter sessions from within emacs
+E.g.: 
+- open ~.ipynb~ files (to the browser) from dired ~cs-open-file-with-new-server~, ~cs-open-file-with-running-server~ (showing a list of already running servers)
+- shutting down servers ~cs-shutdown-these-servers~ from a ~helm~ context menu
