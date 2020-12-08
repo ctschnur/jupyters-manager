@@ -26,7 +26,7 @@
 
 (cl-defstruct jupyter-notebook-list-item url pre-question-mark-url-part port past-question-mark-url-part base-dir)
 
-(defun cs-dired-find-jupyter-servers ()
+(defun jm-dired-find-jupyter-servers ()
   "Returns tuples of (server url, token, server base dir)."
   (let* ((str-output (shell-command-to-string "jupyter notebook list"))
          urls-base-dirs)
@@ -62,30 +62,34 @@
 
 (defconst new-server-candidate (list "new server" "new server"))
 
-
-(defun cs-my-source-open-with-server (filepath)
+(defun jm-my-source-open-with-server (filepath)
   (if (equal (length (helm-marked-candidates)) 1)
       (if (equal (car new-server-candidate) (car (car (helm-marked-candidates))))
           (progn
             (message "Open in new server selected.")
-            (cs-open-file-with-new-server filepath))
-        (cs-open-file-with-running-server filepath
+            (jm-open-file-with-new-server filepath))
+        (jm-open-file-with-running-server filepath
                                           (car (car (helm-marked-candidates)))))
     (message "Please select only one server for this action.")))
 
-(defun cs-my-source-shutdown-servers (filepath)
+(defun jm-source-shutdown-servers (filepath)
   (remove (car new-server-candidate)
           (helm-marked-candidates))
-  (cs-shutdown-these-servers filepath))
+  (jm-shutdown-these-servers filepath))
 
-(defun cs-dired-open-notebook (&optional filepath)
+(defun jm-dired-open-notebook (&optional filepath)
   "This will open a new jupyter server. "
   (unless filepath
-    (setq filepath (dired-get-filename nil t)))
+    (setq filepath (cond
+                    ((and (eq major-mode 'dired-mode)
+                          (dired-get-filename nil t))
+                     (dired-get-filename nil t))
+                    (t nil ;; (format-time-string "untitled_%Y-%m-%d_%H-%M-%S.ipynb")
+                       ))))
     ;; compile a list of jupyter notebook servers
   ;; with a base-dir that is an (nth-order) parent
   ;; of the file's directory is already running
-  (let* ((list-of-jupyter-servers (cs-dired-find-jupyter-servers))
+  (let* ((list-of-jupyter-servers (jm-dired-find-jupyter-servers))
          (helm-source-candidates (remove nil
                                          (mapcar (lambda (jupyter-server)
                                                    (when (file-exists-somewhere-within-folder-p filepath
@@ -108,13 +112,13 @@
                                (list new-server-candidate)))
                      :action (helm-make-actions "Open the file with this server. "
                                                 (lambda (_)
-                                                  (cs-my-source-open-with-server filepath))
+                                                  (jm-my-source-open-with-server filepath))
                                                 "Shutdown these servers"
                                                 (lambda (_)
-                                                  (cs-my-source-shutdown-servers filepath)))))))
+                                                  (jm-source-shutdown-servers filepath)))))))
 
 
-(defun cs-open-file-with-running-server (filepath &optional server-candidate)
+(defun jm-open-file-with-running-server (filepath &optional server-candidate)
   (let* ((compiled-url (concat (jupyter-notebook-list-item-pre-question-mark-url-part
                                 server-candidate)
                                "notebooks/"
@@ -124,12 +128,27 @@
                                 server-candidate))))
     (browse-url-default-browser compiled-url)))
 
-(defun cs-open-file-with-new-server (filepath)
+(defun jm-open-file-with-new-server (&optional filepath)
   ;; no servers is yet running for this file, so create new server
-  (call-process "jupyter-notebook" nil 0 nil
-                filepath))
+  (if filepath
+      (call-process "jupyter-notebook" nil 0 nil
+                    filepath)
+    (let* ((default-directory (jm-ask-to-launch-jupyter-in-dir default-directory
+                                                               "launch jupyter-notebook from this directory: ")))
+      (call-process "jupyter-notebook" nil 0 nil))))
 
-(defun cs-shutdown-these-servers (server-candidates)
+(defun jm-ask-to-launch-jupyter-in-dir (base-directory message)
+  "Only if it's not already a directory."
+  (let* ((directory (helm-read-file-name message
+                                         :initial-input base-directory)))
+    (unless (file-exists-p directory)
+      (if (y-or-n-p (concat "create new directory " directory
+                            " ?"))
+          (make-directory directory 'parents))
+      (message "doing nothing"))
+    directory))
+
+(defun jm-shutdown-these-servers (server-candidates)
   (message "stopping server")
   (mapcar (lambda (server-candidates)
             (setq server-candidates (car server-candidates))
@@ -144,6 +163,10 @@
           (helm-marked-candidates)))
 
 
+(defun jm-new-server ()
+  "launch new jupyter server from within emacs"
+  (interactive)
+  (jm-open-file-with-new-server nil))
 
 (provide 'jupyters-manager)
 ;;; jupyters-manager.el ends here

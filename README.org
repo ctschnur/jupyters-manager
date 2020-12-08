@@ -1,4 +1,7 @@
 * Some functionality to manage jupyter sessions from within emacs
 E.g.: 
-- open ~.ipynb~ files (to the browser) from dired ~cs-open-file-with-new-server~, ~cs-open-file-with-running-server~ (showing a list of already running servers)
-- shutting down servers ~cs-shutdown-these-servers~ from a ~helm~ context menu
+- open ~.ipynb~ files (to the browser) from dired ~jm-open-file-with-new-server~, ~jm-open-file-with-running-server~ (showing a list of already running servers)
+- shutting down servers ~jm-shutdown-these-servers~ from a ~helm~ context menu
+
+* todo list: 
+- write function to open a temporary juypter notebook file with all autoload functionality initialized (i.e. `%load_ext autoload` and `%autoload 2`)
